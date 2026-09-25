@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Webtutor HCM → MWS Tables</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 550px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .header {
+            background: #6c5ce7;
+            color: white;
+            padding: 24px 32px;
+        }
+        .header h1 { font-size: 20px; margin-bottom: 6px; }
+        .header p { font-size: 13px; opacity: 0.9; }
+        .content { padding: 28px 32px; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #6c5ce7;
+        }
+        .btn {
+            width: 100%;
+            background: #6c5ce7;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn:hover { background: #5b4cdb; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .status {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            display: none;
+        }
+        .status.show { display: block; }
+        .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status.loading { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <span class="badge"> REST API Integration</span>
+            <h1>Webtutor HCM → MWS Tables</h1>
+            <p>Создание кандидата при оформлении приказа о приёме</p>
+        </div>
+        <div class="content">
+            <div class="form-group">
+                <label>ФИО кандидата</label>
+                <input type="text" id="fio" value="Смирнов Алексей">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="email" value="a.smirnov@company.com">
+            </div>
+            <div class="form-group">
+                <label>Телефон</label>
+                <input type="text" id="phone" value="+79001234567">
+            </div>
+            <div class="form-group">
+                <label>Источник</label>
+                <select id="source">
+                    <option value="Внутренний перевод">Внутренний перевод</option>
+                    <option value="hh.ru">hh.ru</option>
+                    <option value="Habr">Habr</option>
+                    <option value="LinkedIn">LinkedIn</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Этап</label>
+                <select id="stage">
+                    <option value="Новый отклик">Новый отклик</option>
+                    <option value="Скрининг HR">Скрининг HR</option>
+                    <option value="Тех. интервью">Тех. интервью</option>
+                    <option value="Оффер" selected>Оффер</option>
+                    <option value="Отказ">Отказ</option>
+                </select>
+            </div>
+            <button class="btn" id="sendBtn" onclick="sendCandidate()"> Отправить в MWS Tables</button>
+            <div id="status" class="status"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_TOKEN = 'uskSEKAWNzzUDXNLUOgcDXK';
+        const DATASHEET_ID = 'dstVfzaHuDeu26cduK';
+        const API_URL = `https://tables.mws.ru/fusion/v1/datasheets/${DATASHEET_ID}/records`;
+
+        // Field ID из Панели API
+        const FIELDS = {
+            fio: 'fldvpo8MOEAJz',
+            email: 'fld90fRLgyS8x',
+            phone: 'fldUSKJlKAPzv',
+            source: 'fldw0PNic6UjX',
+            stage: 'fld0VHjgJZP1b',
+            date: 'fldtZORztKvUM'
+        };
+
+        async function sendCandidate() {
+            const btn = document.getElementById('sendBtn');
+            const status = document.getElementById('status');
+
+            btn.disabled = true;
+            btn.textContent = ' Отправка';
+            status.className = 'status show loading';
+            status.textContent = 'Отправка POST-запроса к MWS Tables API';
+
+            const payload = {
+                records: [{
+                    fields: {
+                        [FIELDS.fio]: document.getElementById('fio').value,
+                        [FIELDS.email]: document.getElementById('email').value,
+                        [FIELDS.phone]: document.getElementById('phone').value,
+                        [FIELDS.source]: document.getElementById('source').value,
+                        [FIELDS.stage]: document.getElementById('stage').value,
+                        [FIELDS.date]: Date.now()
+                    }
+                }]
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    status.className = 'status show success';
+                    status.innerHTML = ` Успешно! Создана запись ID: <b>${data.data.records[0].recordId}</b><br>Обновите таблицу "Кандидаты" в MWS Tables.`;
+                } else {
+                    throw new Error(data.message || `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                status.className = 'status show error';
+                status.textContent = ` Ошибка: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = ' Отправить в MWS Tables';
+            }
+        }
+    </script>
+</body>
+</html>
